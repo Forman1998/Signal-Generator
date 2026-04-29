@@ -1,0 +1,147 @@
+import tkinter as tk
+from tkinter import ttk
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+class DynamicSignalGeneratorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Dynamic Multi-Wave Generator")
+        self.root.geometry("1000x700")
+
+        self.t = np.linspace(0, 1, 1000)
+        
+        self.waves = [] 
+
+        self.create_ui()
+        
+        self.add_wave() 
+
+    def create_ui(self):
+        # --- Left Panel: Controls ---
+        self.left_panel = ttk.Frame(self.root)
+        self.left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+        
+        # Header with the "+" Button
+        header_frame = ttk.Frame(self.left_panel)
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(header_frame, text="Wave Controls", font=("Arial", 14, "bold")).pack(side=tk.LEFT)
+        
+        # The '+ Add Wave' button
+        add_btn = ttk.Button(header_frame, text="+", command=self.add_wave)
+        add_btn.pack(side=tk.RIGHT)
+
+        # The '+ Add Wave' button
+        rem_btn = ttk.Button(header_frame, text="-", command=self.remove_wave)
+        rem_btn.pack(side=tk.RIGHT)
+
+        # A frame to hold all the dynamically added wave controls
+        self.waves_frame = ttk.Frame(self.left_panel)
+        self.waves_frame.pack(fill=tk.BOTH, expand=True)
+
+        # --- Right Panel: Plot ---
+        self.plot_frame = ttk.Frame(self.root)
+        self.plot_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.fig, self.ax = plt.subplots(figsize=(6, 4), dpi=100)
+        self.ax.set_title("Signals")
+        self.ax.set_xlabel("Time (s)")
+        self.ax.set_ylabel("Amplitude")
+        self.ax.grid(True)
+        self.line, = self.ax.plot(self.t, np.zeros_like(self.t), color='red', linewidth=2)
+        
+        # Set a wider Y-axis since we are adding multiple waves together
+        self.ax.set_ylim(-20, 20) 
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    def add_wave(self):
+        """Creates a new set of controls and adds them to the list."""
+        wave_id = len(self.waves) + 1
+        
+        # 1. Create variables for this specific wave
+        w_type = tk.StringVar(value="Sine")
+        w_freq = tk.DoubleVar(value=5.0)
+        w_amp = tk.DoubleVar(value=1.0)
+        
+        # 2. Create a frame
+        frame = ttk.LabelFrame(self.waves_frame, text=f"Wave {wave_id}", padding=(10, 5))
+        frame.pack(fill=tk.X, pady=5)
+
+        # 3. Add the Dropdown
+        waveforms = ["Sine", "Square", "Triangle", "Positive Sine", "Peak"]
+        dropdown = ttk.Combobox(frame, textvariable=w_type, values=waveforms, state="readonly", width=10)
+        dropdown.grid(row=0, column=0, padx=5, pady=5)
+        dropdown.bind("<<ComboboxSelected>>", self.update_plot)
+
+        # 4. Add Frequency Slider
+        ttk.Label(frame, text="Freq:").grid(row=0, column=1)
+        ttk.Scale(frame, from_=1, to=50, variable=w_freq, command=self.update_plot).grid(row=0, column=2, padx=5)
+        
+        # 5. Add Amplitude Slider
+        ttk.Label(frame, text="Amp:").grid(row=0, column=3)
+        ttk.Scale(frame, from_=0.1, to=10.0, variable=w_amp, command=self.update_plot).grid(row=0, column=4, padx=5)
+
+        # 6. Store everything in our list so the math function can find it
+        self.waves.append({
+            "frame": frame,
+            "type": w_type,
+            "freq": w_freq,
+            "amp": w_amp
+        })
+        
+        # Update the plot to reflect the new wave
+        self.update_plot()
+
+    def remove_wave(self):
+        if(len(self.waves)>0):
+            wave_id = len(self.waves) - 1
+
+            last_wave = self.waves.pop()
+
+            last_wave["frame"].destroy()
+        
+            # Update the plot to reflect the new wave
+            self.update_plot()
+
+    def generate_merged_signal(self):
+
+        merged_wave = np.zeros_like(self.t)
+        
+        # Loop through every wave the user has added
+        for wave in self.waves:
+            w_type = wave["type"].get()
+            f = wave["freq"].get()
+            a = wave["amp"].get()
+            
+            # Generate the math for this specific wave
+            if w_type == "Sine":
+                y = a * np.sin(2 * np.pi * f * self.t)
+            elif w_type == "Square":
+                y = a * np.sign(np.sin(2 * np.pi * f * self.t))
+            elif w_type == "Triangle":
+                y = a * (2 / np.pi) * np.arcsin(np.sin(2 * np.pi * f * self.t))
+            elif w_type == "Positive Sine":
+                y = abs(a * np.sin(2 * np.pi * f * self.t))
+            elif w_type == "Peak":
+                y = a - abs(a * np.sin(2 * np.pi * f * self.t))
+            else:
+                y = np.zeros_like(self.t)
+                
+            # ADD it to the total merged wave (Superposition)
+            merged_wave += y
+            
+        return merged_wave
+
+    def update_plot(self, event=None):
+        """Updates the graph with the new merged data."""
+        y_data = self.generate_merged_signal()
+        self.line.set_ydata(y_data)
+        self.canvas.draw_idle()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = DynamicSignalGeneratorApp(root)
+    root.mainloop()

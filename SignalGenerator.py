@@ -130,17 +130,17 @@ class DynamicSignalGeneratorApp:
         Hovertip(noise_slider, str(w_noise.get()), hover_delay=5)
 
         # 7. Add start_time
-        ttk.Label(frame, text="Start time: ").grid(row=0, column=7)
+        ttk.Label(frame, text="Start time (ms): ").grid(row=0, column=7)
         w_s_time = tk.DoubleVar(value=0.0)
-        s_time_entry = ttk.Spinbox(frame, from_=0, to=500, increment=1, textvariable=w_s_time, command=self.update_plot)
+        s_time_entry = ttk.Spinbox(frame, from_=0, to=50000, increment=1, textvariable=w_s_time, command=self.update_plot)
         s_time_entry.grid(row=0, column=8, padx=5)
         s_time_entry.delete(0,tk.END)
         s_time_entry.insert(0,"0.0")
 
         # 8. Add duration
-        ttk.Label(frame, text="Duration: ").grid(row=0, column=9)
+        ttk.Label(frame, text="Duration (ms): ").grid(row=0, column=9)
         w_duration = tk.DoubleVar(value=1.0)
-        duration_entry = ttk.Spinbox(frame, from_=0, to=500, increment=1, textvariable=w_duration, command=self.update_plot)
+        duration_entry = ttk.Spinbox(frame, from_=0, to=50000, increment=1, textvariable=w_duration, command=self.update_plot)
         duration_entry.grid(row=0, column=10, padx=5)
         duration_entry.delete(0,tk.END)
         duration_entry.insert(0,"0.0")
@@ -200,8 +200,8 @@ class DynamicSignalGeneratorApp:
     def generate_merged_signal(self):
         max_time = 0.0
         for wave in self.waves:
-            st = wave["start_time"].get()
-            duration = wave["duration"].get()
+            st = wave["start_time"].get() / 1000
+            duration = wave["duration"].get() /1000
             if(max_time<st+duration):
                 max_time = st + duration
         time = np.linspace(0, max_time, int(max_time * float(self.fs_var.get())))
@@ -212,8 +212,8 @@ class DynamicSignalGeneratorApp:
             w_type = wave["type"].get()
             f = 0.0
             a = 0.0
-            st = wave["start_time"].get()
-            duration = wave["duration"].get()
+            st = wave["start_time"].get() / 1000
+            duration = wave["duration"].get() / 1000
 
             if wave["freq"].get() != "":
                 f = float(wave["freq"].get())
@@ -267,8 +267,8 @@ class DynamicSignalGeneratorApp:
         """Updates the graph with the new merged data."""
         max_time = 0.0
         for wave in self.waves:
-            st = wave["start_time"].get()
-            duration = wave["duration"].get()
+            st = wave["start_time"].get() / 1000
+            duration = wave["duration"].get() / 1000
             if(max_time<st+duration):
                 max_time = st + duration
         t = np.linspace(0, max_time, int(max_time * float(self.fs_var.get())))
